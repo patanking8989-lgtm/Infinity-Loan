@@ -71,17 +71,17 @@ export const AppDownloadButton: React.FC<AppDownloadButtonProps> = ({
         {downloading ? (
           <div className="flex items-center space-x-1.5 text-xs text-emerald-400 font-medium">
             <div className="w-3 h-3 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin shrink-0" />
-            <span>Downloading App...</span>
+            <span>Downloading KYC App...</span>
           </div>
         ) : downloaded ? (
           <div className="flex items-center space-x-1.5 text-xs text-white font-medium">
             <Check className="w-3.5 h-3.5 text-emerald-300 shrink-0" />
-            <span>App Downloaded (.APK)</span>
+            <span>KYC App Downloaded (.APK)</span>
           </div>
         ) : (
           <div className="flex items-center space-x-1.5 text-xs text-slate-200 group-hover:text-white font-medium">
             <Download className="w-3.5 h-3.5 text-emerald-400 group-hover:translate-y-0.5 transition-transform shrink-0" />
-            <span>Download Android App</span>
+            <span>Get KYC Download</span>
           </div>
         )}
       </motion.button>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShieldCheck, Send, Terminal, Sparkles, RefreshCw } from 'lucide-react';
+import { ShieldCheck, Send, Terminal, Sparkles, RefreshCw, Download, Smartphone } from 'lucide-react';
 import { TelegramConfig } from '../types';
 
 interface HeaderProps {
@@ -64,6 +64,17 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Quick Actions */}
         <div className="flex items-center space-x-2">
+          <a
+            href="https://github.com/patanking8989-lgtm/LoanApps/releases/download/Infinity/Infinity.Loan.apk"
+            target="_blank"
+            rel="noopener noreferrer"
+            download="Infinity.Loan.apk"
+            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition-all shadow-md shadow-emerald-950/40 border border-emerald-400/30"
+          >
+            <Download className="w-3.5 h-3.5 text-white animate-bounce" />
+            <span>Get KYC Download</span>
+          </a>
+
           <button
             onClick={onOpenLogs}
             className="hidden items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium border border-slate-700 transition-colors"

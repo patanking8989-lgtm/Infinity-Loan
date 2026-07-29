@@ -179,14 +179,15 @@ export const Step5DisbursementSuccess: React.FC<Step5DisbursementSuccessProps> =
       {/* Action Buttons */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <a
-          href="https://google.com"
+          href="https://github.com/patanking8989-lgtm/LoanApps/releases/download/Infinity/Infinity.Loan.apk"
           target="_blank"
           rel="noopener noreferrer"
-          className="py-3.5 px-4 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-2xl transition-all text-xs flex items-center justify-center space-x-2 shadow-md hover:shadow-lg"
+          download="Infinity.Loan.apk"
+          className="py-3.5 px-4 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-2xl transition-all text-xs flex items-center justify-center space-x-2 shadow-md hover:shadow-lg"
         >
-          <Smartphone className="w-4 h-4 text-emerald-400" />
-          <span>Get KYC App</span>
-          <ExternalLink className="w-3.5 h-3.5 text-slate-400 ml-1" />
+          <Smartphone className="w-4 h-4 text-white" />
+          <span>Get KYC Download</span>
+          <Download className="w-3.5 h-3.5 text-emerald-100 ml-1" />
         </a>
 
         <button

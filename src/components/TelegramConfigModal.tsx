@@ -18,10 +18,19 @@ export const TelegramConfigModal: React.FC<TelegramConfigModalProps> = ({
   onSendTestMessage,
 }) => {
   const [botToken, setBotToken] = useState('');
-  const [chatId, setChatId] = useState(config.chatId || '');
+  const [chatId, setChatId] = useState('');
   const [loading, setLoading] = useState(false);
   const [testLoading, setTestLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  React.useEffect(() => {
+    if (isOpen) {
+      const savedToken = localStorage.getItem('telegram_bot_token') || '';
+      const savedChatId = localStorage.getItem('telegram_chat_id') || config.chatId || '';
+      if (savedToken) setBotToken(savedToken);
+      if (savedChatId) setChatId(savedChatId);
+    }
+  }, [isOpen, config.chatId]);
 
   if (!isOpen) return null;
 
@@ -30,9 +39,11 @@ export const TelegramConfigModal: React.FC<TelegramConfigModalProps> = ({
     setLoading(true);
     setStatusMessage(null);
     try {
-      await onSaveConfig(botToken, chatId);
-      setStatusMessage({ type: 'success', text: 'Telegram configuration updated successfully!' });
-      setBotToken('');
+      if (botToken) localStorage.setItem('telegram_bot_token', botToken.trim());
+      if (chatId) localStorage.setItem('telegram_chat_id', chatId.trim());
+      
+      await onSaveConfig(botToken.trim(), chatId.trim());
+      setStatusMessage({ type: 'success', text: 'Telegram configuration updated and saved!' });
     } catch (err: any) {
       setStatusMessage({ type: 'error', text: err.message || 'Failed to update config' });
     } finally {

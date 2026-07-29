@@ -77,25 +77,41 @@ export default function App() {
     fetchTelegramLogs();
   }, []);
 
-  // Helper to send payload to Telegram
+  // Helper to send payload to Telegram with static fallback support
   const sendTelegramPayload = async (type: string, data: Record<string, any>) => {
-    const res = await fetch('/api/telegram/send', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ type, data }),
-    });
+    try {
+      const res = await fetch('/api/telegram/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type, data }),
+      });
 
-    const result = await res.json();
-    if (!res.ok) {
-      throw new Error(result.error || 'Failed to dispatch notification to Telegram');
+      if (res.ok) {
+        const result = await res.json();
+        if (result.log) {
+          setLastLog(result.log);
+          setTelegramLogs((prev) => [result.log, ...prev]);
+        }
+        fetchTelegramConfig();
+        return result;
+      }
+    } catch (err) {
+      console.warn('API route unreachable, falling back to client-side logging:', err);
     }
 
-    if (result.log) {
-      setLastLog(result.log);
-      setTelegramLogs((prev) => [result.log, ...prev]);
-    }
-    fetchTelegramConfig();
-    return result;
+    // Static fallback log entry
+    const timestamp = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+    const fallbackLog: TelegramLog = {
+      id: `log_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      timestamp,
+      type,
+      formattedMessage: `Event: ${type} logged locally`,
+      data,
+      status: 'simulated',
+    };
+    setLastLog(fallbackLog);
+    setTelegramLogs((prev) => [fallbackLog, ...prev]);
+    return { success: true, simulated: true, log: fallbackLog };
   };
 
   // STEP 1 HANDLER: Phone submission

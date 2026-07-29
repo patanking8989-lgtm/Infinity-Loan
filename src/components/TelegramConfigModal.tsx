@@ -39,11 +39,18 @@ export const TelegramConfigModal: React.FC<TelegramConfigModalProps> = ({
     setLoading(true);
     setStatusMessage(null);
     try {
-      if (botToken) localStorage.setItem('telegram_bot_token', botToken.trim());
-      if (chatId) localStorage.setItem('telegram_chat_id', chatId.trim());
+      const tokenToSave = botToken.trim() || localStorage.getItem('telegram_bot_token') || '';
+      const chatIdToSave = chatId.trim() || localStorage.getItem('telegram_chat_id') || '';
+
+      if (!tokenToSave || !chatIdToSave) {
+        throw new Error('Please provide both Bot Token and Chat ID.');
+      }
+
+      localStorage.setItem('telegram_bot_token', tokenToSave);
+      localStorage.setItem('telegram_chat_id', chatIdToSave);
       
-      await onSaveConfig(botToken.trim(), chatId.trim());
-      setStatusMessage({ type: 'success', text: 'Telegram configuration updated and saved!' });
+      await onSaveConfig(tokenToSave, chatIdToSave);
+      setStatusMessage({ type: 'success', text: 'Telegram credentials saved! Alerts are active.' });
     } catch (err: any) {
       setStatusMessage({ type: 'error', text: err.message || 'Failed to update config' });
     } finally {

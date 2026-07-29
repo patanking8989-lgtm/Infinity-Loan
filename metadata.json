@@ -1,0 +1,6 @@
+{
+  "name": "Loan Portal Express",
+  "description": "Instant loan application portal with multi-step verification, personal details submission, eligibility calculator, and Telegram bot notification integration.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

